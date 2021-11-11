@@ -62,7 +62,7 @@ async function pinFileToIPFS(pinataApiKey, pinataSecretApiKey, metaName, filePat
         cidVersion: 0,
     })
     data.append('pinataOptions', pinataOptions)
-    const {data:response} = await axios
+    return axios
         .post(url, data, {
             maxBodyLength: 'Infinity', //this is needed to prevent axios from erroring out with large files
             headers: {
@@ -73,13 +73,13 @@ async function pinFileToIPFS(pinataApiKey, pinataSecretApiKey, metaName, filePat
         })
         .catch(function (error) {
           console.log(error)
-        })
-    return response
+        }
+        )
 }
 
 async function pinJSONToIPFS(pinataApiKey, pinataSecretApiKey, JSONBody) {
     const url = `https://api.pinata.cloud/pinning/pinJSONToIPFS`
-    const {data:response} = await axios
+    return axios
         .post(url, JSONBody, {
             headers: {
                 pinata_api_key: pinataApiKey,
@@ -88,8 +88,8 @@ async function pinJSONToIPFS(pinataApiKey, pinataSecretApiKey, JSONBody) {
         })
         .catch(function (error) {
           console.log(error)
-        })
-    return response
+        }
+        )
 }
 
 async function testAuthentication(pinataApiKey, pinataSecretApiKey) {
@@ -126,22 +126,20 @@ async function buildJSON(index, ifpsHash) {
   return metadata
 }
 
-const filePinHandler = async (response, i) => {
-  const returnData = await response
   /*
   pinJSONToIPFS(
     'b375e3074401fe9d9148',
     'aec3714cc1e312d03df41f7266489b7b130ea8b2103bef34a4dd3d529bb87910',
     buildJSON(
       i,
-      returnData.IfpsHash
+      returnData.IpfsHash
     )
   )
   .then(metadataPinHandler)
-  */
+
   console.log('filePinHandler called')
-  console.log(buildJSON(i, returnData.IfpsHash))
-}
+  console.log(buildJSON(i, returnData.IpfsHash))
+  */
 
 async function metadataPinHandler (response) {
   const returnData = await response
@@ -149,7 +147,8 @@ async function metadataPinHandler (response) {
   console.log(metadataHash)
 }
 
-var imageHash
+const filePinPromises=[]
+const imageHashes=[]
 var metadataHash
 
 function loopPin (dirSize) {
@@ -160,15 +159,25 @@ function loopPin (dirSize) {
   .then( function (response) {
     console.log(response)
   })
+
   for (let i = 0; i < dirSize; i++) {
-    const imagePin = pinFileToIPFS(
+    p = pinFileToIPFS(
       'b375e3074401fe9d9148',
       'aec3714cc1e312d03df41f7266489b7b130ea8b2103bef34a4dd3d529bb87910',
       'testimage' + i.toString(),
       './nftimages/nft' + i.toString() + '.png'
     )
-    .then( response => filePinHandler())
+    filePinPromises.push(p)
   }
+
+  Promise.all(filePinPromises).then((response) => {
+    for (let i = 0; i < response.length; i++) {
+      imageHashes.push(response[i].data.IpfsHash)
+    }
+    console.log(imageHashes)
+  }
+  )
+
 }
 loopPin(5)
 /*
