@@ -10,8 +10,23 @@ const web3 = createAlchemyWeb3(API_URL)
 const contract = require("../artifacts/contracts/MyNFT.sol/MockupNFT.json")
 const contractAddress = "0x778603Ca4DE2675dB7aa82f82676a62CC03fe032"
 const nftContract = new web3.eth.Contract(contract.abi, contractAddress)
+var mintCallNum = 0
+var initNonce
+
+
+async function setInitNonce () {
+  initNonce = await web3.eth.getTransactionCount(PUBLIC_KEY, 'latest')
+}
+
+setInitNonce()
+
 async function mintNFT(tokenURI) {
-  const nonce = await web3.eth.getTransactionCount(PUBLIC_KEY, 'latest') //get latest nonce
+  if (initNonce != await web3.eth.getTransactionCount(PUBLIC_KEY, 'latest')) {
+    setInitNonce()
+    mintCallNum = 0
+  }
+  const nonce = initNonce + mintCallNum //get latest nonce and add one if mint has already been called
+  mintCallNum++
    //the transaction
   const tx = {
     'from': PUBLIC_KEY,
@@ -129,7 +144,7 @@ const imageHashes=[]
 const metadataPinPromises=[]
 const metadataHashes=[]
 
-function loopPin (dirSize) {
+function loopMint(dirSize) {
   testAuthentication(
     'aabafacb7a02fc2fdc8b',
     '485e4dc78f29aae5e306ca1e8bde6e9ae608eda20ed03029bd7605c345f9eb77'
@@ -171,6 +186,11 @@ function loopPin (dirSize) {
       for (let i = 0; i < response.length; i++) {
         metadataHashes.push(response[i].data.IpfsHash)
       }
+      for (let i = 0; i < metadataHashes.length; i++) {
+        mintNFT(
+          'https:gateway.pinata.cloud/ipfs/' + metadataHashes[i]
+        )
+      }
       console.log('Metadata Hashes:')
       console.log(metadataHashes)
     }
@@ -186,7 +206,9 @@ function loopPin (dirSize) {
   }
   )
 }
-loopPin(5)
+
+loopMint(5)
+
 /*
 mintNFT(
   'https://gateway.pinata.cloud/ipfs/' + metadataHash
